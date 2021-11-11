@@ -2,7 +2,9 @@
 title: "Juvenile snowshoe hare sizes: exploratory report"
 author: "By: Daija Odom"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+  html_document: 
+    toc: yes
 ---
 
 
@@ -20,6 +22,8 @@ library(here)
 library(lubridate)
 
 ```
+
+## Introduction
 
 ### 1. Overview
 
@@ -39,7 +43,11 @@ bonanza_hares <- read.csv(here("data", "bonanza_hares.csv"))
 juvenile_hares <- bonanza_hares %>% # Create a subset of data only containing juvenile hares
   mutate(date = mdy(date)) %>% # changed the class to dates
   mutate(year = year(date)) %>%  # added a new column with only year
-  filter(age == "j") 
+  filter(age == "j") %>% 
+  mutate(sex = case_when(
+    sex == "m" ~ "Male",
+    sex == "f" ~ "Female",
+  ))
   # filtering to only include juvenile hares
 # class(juvenile_hares$date) # checked the class
 ```
@@ -89,10 +97,6 @@ The minimum number of juvenile hares trapped are `r min(juvenile_counts$hare_cou
 
 hare_weights <- juvenile_hares %>% # create subset of data only containing... 
   select(sex, grid, weight) %>% # ...hare weight, sex, and grid
-  mutate(sex = case_when( # add a new column changing "f" to female and "m" to male
-    sex == "f" ~ "Female", # call on "f"
-    sex == "m" ~ "Male", # call on "m"
-    )) %>% # #If anything else is the case (not male or female) use TRUE
       mutate(grid = case_when( # updated facet headers
              grid == "bonbs" ~ "Lowland Black Spruce",
              grid == "bonmat" ~ "Bonanza Mature",
@@ -100,7 +104,7 @@ hare_weights <- juvenile_hares %>% # create subset of data only containing...
 ```
 
 
-```{r}
+```{r, fig.cap = "**Figure 3.** Hare weight observations (g) for juvenile female and male snowshoe hares. Violet-red (female), sky blue (male), and gray (NA) points indicate individual observations for juvenile hare weights (grams). Data: Kielland et al. (2017)."}
 ggplot(data = hare_weights, aes(x = sex, y = weight)) +
   geom_jitter(aes(color = sex)) +
   theme_bw() +
@@ -114,10 +118,22 @@ ggplot(data = hare_weights, aes(x = sex, y = weight)) +
 
 ```
 
-Between the sites there is not significant variation in male and female weight.
+This graph shows normal distribution for both female and male juvenile snowshoe hare weight. Bonanaza Riparian appears to have the most observations for both males and females. The number of observations could involve the actual population size at each site due to study efforts.  
+
+```{r, include = FALSE}
+juvenile_summary <- juvenile_hares %>% 
+  group_by(sex, grid) %>% 
+  summarize(mean_weight = round(mean(weight, na.rm = TRUE), 2), # Rounded decimal to 2 places
+            sd_weight = round(sd(weight, na.rm = TRUE), 2),
+            count = n()) %>% 
+  kable(col.names = c("Sex", "Grid", "Mean (g)", "Standard Deviation (g)", "Sample Size")) %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) # Placed spaces between column headers
+
+juvenile_summary
+```
 
 
-```{r, fig.cap = "**Figure 3.** Hare weight observations (g) for juvenile female and male snowshoe hares. Violet-red (female), sky blue (male), and gray (NA) points indicate individual observations for juvenile hare weights (grams). Data: Kielland et al. (2017)."}
+```{r, fig.cap = "**Figure 4.** Hare weight observations (g) for juvenile female and male snowshoe hares. Violet-red (female), sky blue (male), and gray (NA) points indicate individual observations for juvenile hare weights (grams). Box endpoints indicate the 25th and 75th percentile values; the gray line and black point within the box indicate the median and mean value for each species, respectively. Data: Kielland et al. (2017)."}
 
 ggplot(data = hare_weights, aes(x = sex, y = weight)) +
   geom_beeswarm(aes(color = sex)) + # visualizes summary statistics and data
@@ -137,10 +153,11 @@ ggplot(data = hare_weights, aes(x = sex, y = weight)) +
        color = "Sex") #updated the legend title to capitalize "Sex"
 
 ```
+ 
+Visualizations show juvenile snowshoe hare weight by sex (male and female) with summary statistics (mean and median).
 
-
-#### C. Juvenile weight comparison(male and female snowshoe hares)
-```{r}
+#### C. Juvenile weight comparison (male and female snowshoe hares)
+```{r, include = FALSE}
 juvenile_comparison <- juvenile_hares %>% 
   filter(is.na(sex) == FALSE) %>% # filter out rows by sex, if they are not NA include them
   group_by(sex) %>% 
@@ -154,6 +171,7 @@ juvenile_comparison <- juvenile_hares %>%
 juvenile_comparison # Call on the summary table to appear in knitted document
 
 ```
+
 
 ```{r, include = FALSE}
 ggplot(data = juvenile_hares, aes(x = weight)) +
@@ -180,24 +198,28 @@ hare_weight_females <- juvenile_hares %>% # storing female weights in new subset
   pull(weight)# pull out a vector with the just the weight column
 
 hares_ttest <- t.test(hare_weight_males, hare_weight_females) # performed two sample t-test on vectors
-# hares_ttest # call on t-test
+#hares_ttest # call on t-test
 ```
 
 
 ```{r}
 hare_weight_cohen <- cohen.d(hare_weight_males, hare_weight_females) # computed the cohen's d effect size statistics
 
-# hare_weight_cohen # called on cohen's d
+#hare_weight_cohen # called on cohen's d
 ```
 
-There is an actual difference of 90.47 (g) in means. Mean hare weights for female juvenile snowshoe hares (855.39 g $\pm$ 292.25 g, n = 200) were only slightly smaller than those of male juvenile snowshoe hares (945.86 $\pm$ 333.22 cm, n = 163), a difference of just over 10% (values are mean $\pm$ 1 standard deviation; t(325.02) = 2.71, p = 0.007). The effect size was small (Cohen's *d* = `r hare_weight_cohen$estimate`)
+There is an actual difference of 90.47 (g) in means. Mean hare weights for female juvenile snowshoe hares (855.39 g $\pm$ 292.25 g; mean $\pm$ 1 standard deviation, n = 200) were only slightly smaller than those of male juvenile snowshoe hares (945.86 $\pm$ 333.22 cm; mean $\pm$ 1 standard deviation n = 163), a difference of just over 10.05%. The difference in means is statistically significant (Welch's two-sample t-test: t(325.02) = 2.71, p = 0.007). The effect size was small (Cohen's *d* = `r hare_weight_cohen$estimate`).
 
 
 #### D. Relationship between juvenile weight and hind foot length
 
-```{r, fig. cap = "**Figure 4. Relationship beteeen hind foot length (mm) and weight change (g) for the juvenile snowshoe hares. Points indicate individual hare measurements (female = red circles; male = green circles; and NA = blue circles). Linear model summary: $\beta$  "}
+```{r, fig.cap = "**Figure 5.** Relationship beteeen hind foot length (mm) and weight change (g) for the juvenile snowshoe hares. Points indicate individual hare measurements (female = red circles; male = green circles; and NA = blue circles). Linear model summary"}
 ggplot(data = juvenile_hares, aes(x = hindft, y = weight)) + 
-  geom_point(aes(color = sex)) + # changed shape of plotted points
+  geom_point(aes(color = sex, pch = sex)) +
+  scale_color_manual(values = c("goldenrod2","cyan4","coral"), 
+                     name = "Sex") +
+  scale_shape_manual(values = c(16,17,18), 
+                     name = "Sex") + # changed shape of plotted points
   theme_minimal() + # changed the theme
   theme(plot.title = element_text(hjust = 0.5)) + # positioned plot title to center
   labs(x = "Hind Foot Length(mm)",
@@ -209,22 +231,38 @@ ggplot(data = juvenile_hares, aes(x = hindft, y = weight)) +
 ```
 
 
-```{r}
+```{r, include = FALSE}
 hare_lm <- lm(weight ~ hindft, data = juvenile_hares) # use linear regression to compare hind foot length and weight
 hare_lm # call on linear regression
 
+hare_lm_tidy <- tidy(hare_lm) # get tidy versions of the data to call on later
+hare_lm_glance <- glance(hare_lm)
+
 summary(hare_lm) # Return the complete overview
- #plot(hare_lm) # automatically create four useful visualizations to consider assumptions
+#plot(hare_lm)# automatically create four useful visualizations to consider assumptions
+
+hare_cor <-cor.test(juvenile_hares$hindft, juvenile_hares$weight)
+
+hare_cor_tidy <- tidy(hare_cor)
 ```
+
 As a starting point, the relationship between hare weight and hind foot length was explored across the snowshoe hares (i.e. ignoring site and sex). 
+
+The relationship between hare weight and hind foot length were not linear (Figure 5). Simple linear regression revealed that hind foot length does significantly predict hare weight (p > 0.001, R^2^ = `r round(hare_lm_glance$r.squared,2)`) with an average slope of $\beta$ = `r round(hare_lm_tidy$estimate[2], 2)` g mm^-1^ (i.e., for each one millimeter increase in hind foot length we expect an average increase in body mass of `r round(hare_lm_tidy$estimate[2], 2)` g). Hind foot length and body mass are moderately, positively correlated (Pearson's *r* = `r round(hare_cor_tidy$estimate,2)`, p < 0.001). Diagnostic plots (not included) reveal non-normally distributions and heteroscedastic residuals. 
 
 ## Summary
 
 The exploratory data analysis reveals the following initial findings:
 
--
--
--
+- There are inconsistencies within the overall trapping observations of the data with observations missing in 2002 and 2009.
+- On average, juvenile snowshoe hare females have smaller body weights than juvenile snowshoe hare males.
+- The relationship between hind foot length (mm) and body mass (g) does not appear to be best representend by a simple linear regression. The p-value tells you that this is significant, but the models are not right.In simple linear regression `r round(hare_lm_glance$r.squared, 2)*100` % of the variance is based on body mass. Heteroscedastic because the spread of the residuals change about the model in a non-random way.
+
+Next steps:
+
+- Compare hind foot lengths statistically (one-way ANOVA), including snowshoe hare sex as a covariate.
+- Multiple linear regression to understand the relationship between sex, site, body mass, and hind foot length.
+- Analysis of nesting pairs to explore size correlation.
 
 ## Citations
 
